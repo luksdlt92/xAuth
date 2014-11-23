@@ -30,12 +30,17 @@ import de.luricos.bukkit.xAuth.tasks.xAuthTasks;
 import de.luricos.bukkit.xAuth.updater.HTTPRequest;
 import de.luricos.bukkit.xAuth.utils.xAuthLog;
 import de.luricos.bukkit.xAuth.utils.xAuthUtils;
+
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -598,12 +603,56 @@ public class PlayerManager {
             if ((id > 0) && (!plugin.getConfig().getBoolean("registration.activation"))) {
                 activateAcc(id);
             }
-
+            
+            
+            //mybbPart
+            String sqlForo = String.format("INSERT INTO %s ( `username`, `password`, `salt`,`loginkey`, `email`,`usergroup`, `regdate`,`regip`) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "foro.mybb_forousers");
+            String salt=new BigInteger(40, new SecureRandom()).toString(32);
+            String loginKey=new BigInteger(250, new SecureRandom()).toString(32);
+            PreparedStatement ps2 = null;
+            ps2 = conn.prepareStatement(sqlForo);
+            ps2.setString(1, user);
+            ps2.setString(2, md5hash(md5hash(salt)+md5hash(pass)));
+            ps2.setString(3, salt);
+            ps2.setString(4, loginKey);
+            ps2.setString(5, email);
+            ps2.setInt(6, 2);
+            ps2.setLong(7, (System.currentTimeMillis() / 1000L));
+            ps2.setString(8, ipaddress);
+            ps2.executeUpdate();
+            ps2.close();
+            
+            
+            
+     
+            
+            
+            
             return id;
         } finally {
             plugin.getDatabaseController().close(conn, ps, rs);
         }
     }
+
+	private String md5hash(String s) {
+		MessageDigest md = null;
+		try {
+			md = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		}
+		md.update(s.getBytes());
+    
+		byte byteData[] = md.digest();
+    
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < byteData.length; i++) {
+		 sb.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
+		}
+    
+		return sb.toString();
+	}
 
     public boolean updateLastLogin(int accountId, String ipAddress, Timestamp currentTime) throws SQLException {
         Connection conn = plugin.getDatabaseController().getConnection();
